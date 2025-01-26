@@ -5,8 +5,8 @@
 #include <IRutils.h>
 #include "ir.h"
 
-#define IR_LED_PIN 13
-#define IR_RECV_PIN 0
+#define IR_LED_PIN 15   // D8
+#define IR_RECV_PIN 13  // D7
 
 IRsend irsend(IR_LED_PIN);
 IRrecv irrecv(IR_RECV_PIN);
@@ -31,6 +31,7 @@ void hitHandle(int myPlayer, int myTeam, int &actualHealth) {
 
     // Ignore data that are not in correct form - PTD (111–999)
     if (receivedData < 100 || receivedData > 999) { 
+      irrecv.resume();
       return; 
     }
 
@@ -41,6 +42,7 @@ void hitHandle(int myPlayer, int myTeam, int &actualHealth) {
 
     // Ignore self-hit and friendly-fire
     if (player == myPlayer || team == myTeam) {
+      irrecv.resume();
       return;
     }
 
@@ -48,7 +50,6 @@ void hitHandle(int myPlayer, int myTeam, int &actualHealth) {
     if (hitCallback) {
       hitCallback(damage);
     }
-
     irrecv.resume();  // Resume data receiving
   }
 }

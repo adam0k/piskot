@@ -10,12 +10,16 @@ const char* password = "17931793";
 #ifndef PISKOT_NUMBER
 #endif
 
+#define MULTI_BTN 16   // D0
+#define FIRE_BTN 14    // D5
+#define RELOAD_BTN 12  // D6
+
 // Player variables
 int playerNumber = PISKOT_NUMBER; 
 int teamNumber = PISKOT_NUMBER;
-int choosedWeaponDamage;
 int actualHealth;
 int actualAmmo;
+int choosedWeaponDamage;
 
 // Game variables
 enum GameState {
@@ -51,11 +55,11 @@ bool fireBtnPressed();
 void setup() {
   Serial.begin(115200);
   Serial.println();
-  pinMode(16, INPUT_PULLUP);    // OTA button
-  pinMode(15, INPUT_PULLUP);    // Fire button
+  pinMode(MULTI_BTN, INPUT_PULLUP);   // Multi button (OTA, Team, Weapon)
+  pinMode(FIRE_BTN, INPUT_PULLUP);    // Fire button
   displayInit();
 
-  if (digitalRead(16) == HIGH) {
+  if (digitalRead(MULTI_BTN) == HIGH) {
     irInit(decreaseHealth);
     gameVariablesInit();
     welcomeScreen();
@@ -140,7 +144,7 @@ void gameOverScreen(){
 
 // Game logic methods
 void gameVariablesInit(){
-  lastFireBtnState = digitalRead(15);
+  lastFireBtnState = digitalRead(FIRE_BTN);
   choosedWeaponDamage = 1;
   actualHealth = 5;
   actualAmmo = 7;
@@ -177,7 +181,7 @@ void decreaseHealth(int damage){
 
 // Helper methods
 bool fireBtnPressed(){
-  bool fireBtnState = digitalRead(15);
+  bool fireBtnState = digitalRead(FIRE_BTN);
   if (fireBtnState == LOW && lastFireBtnState == HIGH) {
     lastFireBtnState = fireBtnState;
     delay(100); // Anti-bounce delay

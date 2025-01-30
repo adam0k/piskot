@@ -49,6 +49,7 @@ void otaInit(const char* ssid, const char* password){
   String ipAddress = WiFi.localIP().toString();
   Serial.println(ipAddress);
   writeText(ipAddress, 1, 0, 20);
+  writeText(String(PISKOT_NUMBER), 2, 110, 40);
 }
 
 void otaHandle(){

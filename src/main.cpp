@@ -2,6 +2,7 @@
 #include "display.h"
 #include "ota.h"
 #include "ir.h"
+#include "weapon.h"
 
 const char* ssid = "KravecNET";
 const char* password = "17931793";
@@ -10,12 +11,18 @@ const char* password = "17931793";
 #ifndef PISKOT_NUMBER
 #endif
 
+#define MULTI_BTN 16   // D0
+#define FIRE_BTN 14    // D5
+#define RELOAD_BTN 12  // D6
+
+// VARIABLES
 // Player variables
 int playerNumber = PISKOT_NUMBER; 
 int teamNumber = PISKOT_NUMBER;
-int choosedWeaponDamage;
 int actualHealth;
-int actualAmmo;
+// Weapon varibles
+Weapon pistol = {"Pistol", 7, 7, 1, 3000};  // FEAT: WEAPONS - definition of other guns here
+Weapon currentWeapon = pistol;
 
 // Game variables
 enum GameState {
@@ -28,34 +35,39 @@ GameState gameState;
 
 // Helper variables
 bool lastFireBtnState;
+bool lastReloadBtnState;
 bool reloading = false;
 unsigned long reloadStartTime = 0;
 
+// METHODS
 // Main methods
 void gameVariablesInit();
 void handleGameLogic();
 
 // Screen methods
 void welcomeScreen();
-void updateGameScreen();
+void gameScreen();
 void gameOverScreen();
 
 // Game logic methods
 void fireHandle();
-void reloadGun();
+void reloadHandle();
+void startReloading();
 void decreaseHealth(int damage);
 
 // Helper methods
 bool fireBtnPressed();
+bool reloadBtnPressed();
 
 void setup() {
   Serial.begin(115200);
   Serial.println();
-  pinMode(16, INPUT_PULLUP);    // OTA button
-  pinMode(15, INPUT_PULLUP);    // Fire button
+  pinMode(MULTI_BTN, INPUT_PULLUP);   // Multi button (OTA, Team, Weapon)
+  pinMode(FIRE_BTN, INPUT_PULLUP);    // Fire button
+  pinMode(RELOAD_BTN, INPUT_PULLUP);  // Reload button
   displayInit();
 
-  if (digitalRead(16) == HIGH) {
+  if (digitalRead(MULTI_BTN) == HIGH) {
     irInit(decreaseHealth);
     gameVariablesInit();
     welcomeScreen();
@@ -74,7 +86,7 @@ void loop() {
     case WELCOME: {
       if (fireBtnPressed()) {
         gameVariablesInit();
-        updateGameScreen();
+        gameScreen();
         enableIr();
         gameState = GAME;
       }
@@ -102,16 +114,22 @@ void loop() {
 }
 
 // Main methods
+void gameVariablesInit(){
+  lastFireBtnState = digitalRead(FIRE_BTN);
+  lastReloadBtnState = digitalRead(RELOAD_BTN);
+  actualHealth = 5;
+  currentWeapon = pistol;
+}
 void handleGameLogic() {
   hitHandle(playerNumber, teamNumber, actualHealth);  
   if (reloading) {
-    if (millis() - reloadStartTime >= 3000) {
-      actualAmmo = 7;
-      reloading = false;
-      updateGameScreen();
-    }
+    reloadHandle();
   } else {
-    fireHandle();
+    if (reloadBtnPressed() && currentWeapon.currentAmmo < currentWeapon.maxAmmo) {
+      startReloading();
+    } else {
+      fireHandle();
+    }
   }
 }
 
@@ -119,18 +137,16 @@ void handleGameLogic() {
 void welcomeScreen(){
   clearDisplay();
   writeText(String(teamNumber), 1, 122, 0);
+  drawMakcen(52, 14);
   writeText("PISKOT", 3, 12, 22);
   writeText("START", 1, 98, 56);
 }
-void updateGameScreen(){
+void gameScreen(){
   clearDisplay();
-  writeText("Zivoty: " + String(actualHealth), 1, 0, 0);
   writeText(String(teamNumber), 1, 122, 0);
-  if(reloading){
-    writeText("Nabijam...", 1, 0, 16);
-  } else {
-    writeText("Naboje: " + String(actualAmmo), 1, 0, 16);
-  }
+  drawLives(actualHealth);
+  drawAmmo(currentWeapon);
+  drawWeaponInfo(currentWeapon);
 }
 void gameOverScreen(){
   clearDisplay();
@@ -139,30 +155,31 @@ void gameOverScreen(){
 }
 
 // Game logic methods
-void gameVariablesInit(){
-  lastFireBtnState = digitalRead(15);
-  choosedWeaponDamage = 1;
-  actualHealth = 5;
-  actualAmmo = 7;
-}
 void fireHandle(){
   if(fireBtnPressed()){
-    if(actualAmmo > 0){
-      sendIRData(playerNumber, teamNumber, choosedWeaponDamage);
-      actualAmmo --;
-      updateGameScreen();
+    if(currentWeapon.currentAmmo > 0){
+      sendIRData(playerNumber, teamNumber, currentWeapon.damage);
+      currentWeapon.currentAmmo --;
+      drawAmmo(currentWeapon);
     }
     else{
-      reloadGun();
       // FEAT: AUDIO - no ammo handler (sound of empty gun here)
     }
   }
 }
-void reloadGun(){
-  if (!reloading) {
-    reloading = true;
-    reloadStartTime = millis();
-    updateGameScreen();
+void startReloading(){
+  reloading = true;
+  reloadStartTime = millis();
+  clearDisplay("AMMO");
+  writeText("Nabijam...", 1, 25, 30);
+}
+void reloadHandle(){
+  if (millis() - reloadStartTime >= currentWeapon.reloadTime) {
+    currentWeapon.currentAmmo = 7;
+    reloading = false;
+    drawAmmo(currentWeapon);
+  } else{
+    drawReloadingAnimation(reloadStartTime, currentWeapon.reloadTime);
   }
 };
 void decreaseHealth(int damage){
@@ -172,18 +189,29 @@ void decreaseHealth(int damage){
   } else{
     actualHealth = newHealth;
   }
-  updateGameScreen();
+  drawLives(actualHealth);
 }
 
 // Helper methods
 bool fireBtnPressed(){
-  bool fireBtnState = digitalRead(15);
+  bool fireBtnState = digitalRead(FIRE_BTN);
   if (fireBtnState == LOW && lastFireBtnState == HIGH) {
     lastFireBtnState = fireBtnState;
-    delay(100); // Anti-bounce delay
+    delay(50); // Anti-bounce delay
     return true;
   }
   lastFireBtnState = fireBtnState;
-  delay(100); // Anti-bounce delay
+  delay(50); // Anti-bounce delay
+  return false;
+}
+bool reloadBtnPressed(){
+  bool reloadBtnState = digitalRead(RELOAD_BTN);
+  if (reloadBtnState == LOW && lastReloadBtnState == HIGH) {
+    lastFireBtnState = reloadBtnState;
+    delay(50); // Anti-bounce delay
+    return true;
+  }
+  lastReloadBtnState = reloadBtnState;
+  delay(50); // Anti-bounce delay
   return false;
 }

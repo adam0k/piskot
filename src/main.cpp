@@ -3,6 +3,7 @@
 #include "ota.h"
 #include "ir.h"
 #include "weapon.h"
+#include "sound.h"
 
 const char* ssid = "KravecNET";
 const char* password = "17931793";
@@ -11,9 +12,9 @@ const char* password = "17931793";
 #ifndef PISKOT_NUMBER
 #endif
 
-#define MULTI_BTN 16   // D0
-#define FIRE_BTN 14    // D5
-#define RELOAD_BTN 12  // D6
+#define MULTI_BTN   D0
+#define FIRE_BTN    D5
+#define RELOAD_BTN  D6
 
 // VARIABLES
 // Player variables
@@ -21,7 +22,7 @@ int playerNumber = PISKOT_NUMBER;
 int teamNumber = PISKOT_NUMBER;
 int actualHealth;
 // Weapon varibles
-Weapon pistol = {"Pistol", 7, 7, 1, 3000};  // FEAT: WEAPONS - definition of other guns here
+Weapon pistol = {"Pistol", 7, 7, 1, 2500};  // FEAT: WEAPONS - definition of other guns here
 Weapon currentWeapon = pistol;
 
 // Game variables
@@ -68,6 +69,7 @@ void setup() {
   displayInit();
 
   if (digitalRead(MULTI_BTN) == HIGH) {
+    soundInit();
     irInit(decreaseHealth);
     gameVariablesInit();
     welcomeScreen();
@@ -142,6 +144,7 @@ void welcomeScreen(){
   writeText("START", 1, 98, 56);
 }
 void gameScreen(){
+  playSound(1, 1);
   clearDisplay();
   writeText(String(teamNumber), 1, 122, 0);
   drawLives(actualHealth);
@@ -149,6 +152,7 @@ void gameScreen(){
   drawWeaponInfo(currentWeapon);
 }
 void gameOverScreen(){
+  playSound(1, 2);
   clearDisplay();
   writeText("KONIEC", 3, 12, 22);
   writeText("ZNOVA", 1, 98, 56);
@@ -158,12 +162,13 @@ void gameOverScreen(){
 void fireHandle(){
   if(fireBtnPressed()){
     if(currentWeapon.currentAmmo > 0){
+      playSound(3, 1);
       sendIRData(playerNumber, teamNumber, currentWeapon.damage);
       currentWeapon.currentAmmo --;
       drawAmmo(currentWeapon);
     }
     else{
-      // FEAT: AUDIO - no ammo handler (sound of empty gun here)
+      playSound(3, 2);
     }
   }
 }
@@ -172,6 +177,7 @@ void startReloading(){
   reloadStartTime = millis();
   clearDisplay("AMMO");
   writeText("Nabijam...", 1, 25, 30);
+  playSound(3, 3);
 }
 void reloadHandle(){
   if (millis() - reloadStartTime >= currentWeapon.reloadTime) {
@@ -184,6 +190,7 @@ void reloadHandle(){
 };
 void decreaseHealth(int damage){
   int newHealth = actualHealth - damage;
+  playSound(2, random(1, 4));
   if(newHealth <= 0){
     actualHealth = 0;
   } else{

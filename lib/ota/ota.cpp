@@ -13,7 +13,7 @@ void otaInit(const char* ssid, const char* password){
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("OTA failed, rebooting...");
     clearDisplay();
-    writeText("OTA failed, rebooting...", 1, 0, 0);
+    writeText("OTA failed, rebooting...", 1, 0, 10);
     delay(2000);
     ESP.restart();
   }

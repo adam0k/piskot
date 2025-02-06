@@ -5,8 +5,8 @@
 #include <IRutils.h>
 #include "ir.h"
 
-#define IR_LED_PIN 15   // D8
-#define IR_RECV_PIN 13  // D7
+#define IR_RECV_PIN D3
+#define IR_LED_PIN  D4
 
 IRsend irsend(IR_LED_PIN);
 IRrecv irrecv(IR_RECV_PIN);

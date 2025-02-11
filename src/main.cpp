@@ -67,10 +67,10 @@ void setup() {
   pinMode(FIRE_BTN, INPUT_PULLUP);    // Fire button
   pinMode(RELOAD_BTN, INPUT_PULLUP);  // Reload button
   displayInit();
+  irInit(decreaseHealth);
 
   if (digitalRead(MULTI_BTN) == HIGH) {
     soundInit();
-    irInit(decreaseHealth);
     gameVariablesInit();
     welcomeScreen();
     gameState = WELCOME;
